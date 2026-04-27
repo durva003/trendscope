@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrendScope</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f; --surface: #13131a; --border: #2a2a3a;
+      --accent: #7c6af7; --accent2: #f7a26a; --text: #e8e8f0;
+      --muted: #6b6b80; --green: #4ade80; --red: #f87171;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; padding: 40px 20px; }
+    .container { max-width: 860px; margin: 0 auto; }
+    h1 { font-family: 'Syne', sans-serif; font-size: 2.8rem; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+    .subtitle { color: var(--muted); margin-top: 6px; font-size: 0.95rem; }
+    .intro { margin-top: 24px; padding: 20px 24px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; display: flex; flex-direction: column; gap: 10px; }
+    .intro p { font-size: 0.95rem; line-height: 1.7; color: var(--text); }
+    .intro em { color: var(--accent2); font-style: normal; font-weight: 500; }
+    .intro strong { color: var(--accent); font-weight: 600; }
+    .search-bar { display: flex; gap: 10px; margin: 36px 0 0; }
+    .search-bar input { flex: 1; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 1rem; font-family: 'DM Sans', sans-serif; outline: none; transition: border 0.2s; }
+    .search-bar input:focus { border-color: var(--accent); }
+    .search-bar input::placeholder { color: var(--muted); }
+    .search-bar button { padding: 14px 28px; background: var(--accent); color: white; border: none; border-radius: 10px; font-size: 1rem; font-family: 'Syne', sans-serif; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+    .search-bar button:hover { opacity: 0.85; }
+    .search-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #results { margin-top: 40px; display: none; }
+    .score-banner { display: flex; align-items: center; gap: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px 28px; margin-bottom: 24px; }
+    .score-circle { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; flex-shrink: 0; }
+    .score-info h2 { font-family: 'Syne', sans-serif; font-size: 1.1rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    .score-info p { margin-top: 6px; line-height: 1.6; font-size: 0.95rem; }
+    .verdict { margin-top: 8px; font-size: 0.85rem; color: var(--accent2); font-weight: 500; }
+    .meta { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+    .card h3 { font-family: 'Syne', sans-serif; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 14px; }
+    .card ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .card ul li { font-size: 0.9rem; line-height: 1.5; padding-left: 20px; position: relative; }
+    .card ul li::before { position: absolute; left: 0; font-size: 0.75rem; top: 2px; }
+    .praises li::before { content: "✦"; color: var(--green); }
+    .complaints li::before { content: "✦"; color: var(--red); }
+    .requests li::before { content: "✦"; color: var(--accent); }
+    .fixes li::before { content: "✦"; color: var(--accent2); }
+    .persona-card { grid-column: 1 / -1; border-color: var(--accent); }
+    .persona-card p { font-size: 0.95rem; line-height: 1.7; font-style: italic; }
+    .export-btn { margin-top: 20px; padding: 12px 24px; background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; transition: border-color 0.2s; }
+    .export-btn:hover { border-color: var(--accent); color: var(--accent); }
+    #loading { display: none; text-align: center; padding: 60px 0; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { color: var(--muted); font-size: 0.9rem; }
+    #error { display: none; color: var(--red); background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); border-radius: 10px; padding: 16px 20px; margin-top: 20px; font-size: 0.9rem; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } h1 { font-size: 2rem; } .search-bar { flex-direction: column; } }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>TrendScope</h1>
+  <p class="subtitle">AI-powered product feedback analyzer</p>
+  <div class="intro">
+  <p>TrendScope helps you understand what people <em>really</em> think about any product — no surveys, no manual research. Just type a product name and get instant AI-powered insights pulled from real web data.</p>
+  <p>Perfect for <strong>product managers</strong> validating ideas, <strong>founders</strong> researching competitors, or <strong>students</strong> building PM portfolios.</p>
+</div>
+  <div class="search-bar">
+    <input id="product" type="text" placeholder="Product name (e.g. Notion, Figma, Airpods)">
+    <button id="btn" onclick="analyze()">Analyze</button>
+  </div>
+  <div id="loading"><div class="spinner"></div><p>Fetching data & analyzing...</p></div>
+  <div id="error"></div>
+  <div id="results">
+    <div class="score-banner">
+      <div class="score-circle" id="score-circle"></div>
+      <div class="score-info">
+        <h2>Sentiment Score</h2>
+        <p id="summary"></p>
+        <p class="verdict" id="verdict"></p>
+        <p class="meta" id="meta"></p>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card praises"><h3>Top Praises</h3><ul id="praises"></ul></div>
+      <div class="card complaints"><h3>Top Complaints</h3><ul id="complaints"></ul></div>
+      <div class="card requests"><h3>Feature Requests</h3><ul id="requests"></ul></div>
+      <div class="card fixes"><h3>Priority Fixes</h3><ul id="fixes"></ul></div>
+      <div class="card persona-card"><h3>Typical User Persona</h3><p id="persona"></p></div>
+    </div>
+    <button class="export-btn" onclick="exportCSV()">⬇ Export as CSV</button>
+  </div>
+</div>
+<script>
+  let lastData = null, lastProduct = "";
+
+  async function analyze() {
+    const product = document.getElementById("product").value.trim();
+    if (!product) return;
+    document.getElementById("btn").disabled = true;
+    document.getElementById("loading").style.display = "block";
+    document.getElementById("results").style.display = "none";
+    document.getElementById("error").style.display = "none";
+    try {
+      const res = await fetch("/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product, limit: 10 })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      lastData = data; lastProduct = product;
+      renderResults(data, product);
+    } catch (e) {
+      document.getElementById("error").textContent = "Error: " + e.message;
+      document.getElementById("error").style.display = "block";
+    } finally {
+      document.getElementById("btn").disabled = false;
+      document.getElementById("loading").style.display = "none";
+    }
+  }
+
+  function renderResults(data, product) {
+    const score = data.sentiment_score;
+    const circle = document.getElementById("score-circle");
+    circle.textContent = score.toFixed(1);
+    const color = score >= 7 ? "#4ade80" : score >= 5 ? "#7c6af7" : "#f87171";
+    circle.style.background = score >= 7 ? "rgba(74,222,128,0.15)" : score >= 5 ? "rgba(124,106,247,0.15)" : "rgba(248,113,113,0.15)";
+    circle.style.color = color;
+    circle.style.border = `2px solid ${color}`;
+    document.getElementById("summary").textContent = data.summary;
+    document.getElementById("verdict").textContent = "💡 " + data.verdict;
+    document.getElementById("meta").textContent = `${data.reviews_analyzed} snippets analyzed for "${product}"`;
+    const fill = (id, items) => { document.getElementById(id).innerHTML = items.map(i => `<li>${i}</li>`).join(""); };
+    fill("praises", data.top_praises);
+    fill("complaints", data.top_complaints);
+    fill("requests", data.feature_requests);
+    fill("fixes", data.priority_fixes);
+    document.getElementById("persona").textContent = data.persona;
+    document.getElementById("results").style.display = "block";
+    document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+  }
+
+  function exportCSV() {
+    if (!lastData) return;
+    const rows = [
+      ["Field", "Value"],
+      ["Product", lastProduct],
+      ["Sentiment Score", lastData.sentiment_score],
+      ["Reviews Analyzed", lastData.reviews_analyzed],
+      ["Summary", lastData.summary],
+      ["Verdict", lastData.verdict],
+      ["Persona", lastData.persona],
+      ...lastData.top_praises.map((v, i) => [`Praise ${i+1}`, v]),
+      ...lastData.top_complaints.map((v, i) => [`Complaint ${i+1}`, v]),
+      ...lastData.feature_requests.map((v, i) => [`Feature Request ${i+1}`, v]),
+      ...lastData.priority_fixes.map((v, i) => [`Priority Fix ${i+1}`, v]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `trendscope_${lastProduct.replace(/\s+/g, "_")}.csv`;
+    a.click();
+  }
+
+  document.getElementById("product").addEventListener("keydown", e => { if (e.key === "Enter") analyze(); });
+</script>
+</body>
+</html>

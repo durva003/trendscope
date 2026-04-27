@@ -4,8 +4,8 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from groq import Groq
 from dotenv import load_dotenv
-import os, json, requests
-from bs4 import BeautifulSoup
+from serpapi import GoogleSearch
+import os, json
 
 load_dotenv()
 
@@ -18,15 +18,28 @@ class AnalyzeRequest(BaseModel):
     limit: int = 10
 
 def scrape_mentions(product: str, limit: int = 10):
-    headers = {"User-Agent": "Mozilla/5.0"}
-    query = f"{product} review pros cons"
-    url = f"https://html.duckduckgo.com/html/?q={query}"
     try:
-        res = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(res.text, "html.parser")
-        results = soup.find_all("a", class_="result__snippet")
-        return [r.get_text(strip=True) for r in results[:limit]]
+        search = GoogleSearch({
+            "q": f"{product} review pros cons",
+            "api_key": os.getenv("SERPAPI_KEY"),
+            "num": limit
+        })
+        results = search.get_dict()
+
+        if "error" in results:
+            print(f"SerpApi error: {results['error']}")
+            return []
+
+        mentions = []
+        for r in results.get("organic_results", [])[:limit]:
+            snippet = r.get("snippet", "")
+            if snippet:
+                mentions.append(snippet)
+
+        print(f"Found {len(mentions)} mentions for {product}")
+        return mentions
     except Exception as e:
+        print(f"Scrape error: {str(e)}")
         return []
 
 @app.get("/", response_class=HTMLResponse)
@@ -38,7 +51,7 @@ async def analyze(req: AnalyzeRequest):
     mentions = scrape_mentions(req.product, req.limit)
 
     if not mentions:
-        return {"error": "Could not fetch data. Try again."}
+        return {"error": "Could not fetch data. SerpApi may be out of credits or key is wrong."}
 
     combined = "\n".join(mentions)
 
@@ -60,7 +73,7 @@ async def analyze(req: AnalyzeRequest):
 
     try:
         response = client.chat.completions.create(
-            model= "llama-3.3-70b-versatile",
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.4
         )
